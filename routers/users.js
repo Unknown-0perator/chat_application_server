@@ -2,6 +2,40 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const User = require('../model/User');
+const authorize = require('../controllers/authorize');
+
+router.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            return res.status(403).json({ token: null, message: 'Invalid username' });
+        }
+
+        bcrypt.compare(password, user.password, (err, result) => {
+            if (err) {
+                console.error(err);
+            }
+
+            if (result) {
+                const token = jwt.sign({ username: user.username }, JWT_SECRET);
+
+                return res.status(200).json({
+                    token,
+                    message: 'Logged In',
+                    user,
+                });
+            } else {
+                return res.status(403).json({ token: null, message: 'Wrong password.' });
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 
 router.post('/sign-up', async (req, res) => {
     const { username, password, full_name } = req.body;
@@ -24,10 +58,27 @@ router.post('/sign-up', async (req, res) => {
             fullName: full_name
         });
 
-        res.status(201).json({ 'success': `New user '${username}' created` });
+        const token = jwt.sign({ username: newUser.username }, process.env.JWT_SECRET);
+
+        res.status(201).json({
+            'success': `New user '${username}' created`,
+            'token': token,
+            'user': newUser
+        });
+
 
     } catch (err) {
         res.status(500).json({ 'error': `Internal Server Error: ${err.message}` });
+    }
+});
+
+router.get('/', authorize, async (req, res) => {
+    try {
+        const user = await User.findOne({ username: req.payload.username });
+        return res.status(200).json(user);
+    } catch (error) {
+        console.error(error);
+        return res.status(403).send(`Forbidden: ${error}`);
     }
 });
 
