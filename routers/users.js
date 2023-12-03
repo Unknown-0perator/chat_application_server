@@ -3,6 +3,8 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const User = require('../model/User');
 const authorize = require('../controllers/authorize');
+const jwt = require('jsonwebtoken')
+const { JWT_SECRET } = process.env;
 
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
@@ -81,5 +83,38 @@ router.get('/', authorize, async (req, res) => {
         return res.status(403).send(`Forbidden: ${error}`);
     }
 });
+
+
+router.get('/all', authorize, async (req, res) => {
+    try {
+        const loggedInUser = req.payload.username;
+        const users = await User.find({ username: { $ne: loggedInUser } });
+        return res.status(200).json(users);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.get('/search', authorize, async (req, res) => {
+    try {
+        const { username } = req.query;
+
+        if (!username) {
+            return res.status(400).json({ message: 'Username parameter is required for search' });
+        }
+
+        const users = await User.find({
+            username: { $regex: new RegExp(username, 'i') },
+            username: { $ne: req.payload.username }
+        });
+
+        return res.status(200).json(users);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 
 module.exports = router;
