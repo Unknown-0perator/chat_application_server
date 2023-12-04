@@ -12,6 +12,7 @@ const authorize = (req, res, next) => {
 
     jwt.verify(authToken, JWT_SECRET, (err, decoded) => {
         if (err) {
+            console.log('Invalid Token:', err);
             return res.status(403).json({ message: `Invalid Token ${err}` });
         } else {
             req.payload = decoded;

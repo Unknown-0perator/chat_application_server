@@ -84,21 +84,9 @@ router.get('/', authorize, async (req, res) => {
     }
 });
 
-
-router.get('/all', authorize, async (req, res) => {
+router.post('/search', authorize, async (req, res) => {
     try {
-        const loggedInUser = req.payload.username;
-        const users = await User.find({ username: { $ne: loggedInUser } });
-        return res.status(200).json(users);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
-
-router.get('/search', authorize, async (req, res) => {
-    try {
-        const { username } = req.query;
+        const { username } = req.body;
 
         if (!username) {
             return res.status(400).json({ message: 'Username parameter is required for search' });
@@ -106,15 +94,20 @@ router.get('/search', authorize, async (req, res) => {
 
         const users = await User.find({
             username: { $regex: new RegExp(username, 'i') },
-            username: { $ne: req.payload.username }
+            _id: { $ne: req.payload._id }
         });
-
-        return res.status(200).json(users);
+        const foundUser = {
+            username: users[0].username,
+            fullName: users[0].fullName,
+            _id: users[0]._id
+        }
+        return res.status(200).json(foundUser);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 
 
 module.exports = router;
